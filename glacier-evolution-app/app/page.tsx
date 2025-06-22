@@ -1,4 +1,12 @@
+"use client"
+
+import dynamic from "next/dynamic"
+
 import { AreaSelector } from "@/components/area-selector"
+
+const GlacierSelector = dynamic(() => import("@/components/glacier-selector"), {
+  ssr: false
+})
 
 export default function HomePage() {
   return (
@@ -10,7 +18,7 @@ export default function HomePage() {
             Explore the evolution of glacier areas over time through satellite imagery and data visualization
           </p>
         </div>
-        <AreaSelector />
+        <GlacierSelector />
       </div>
     </div>
   )
