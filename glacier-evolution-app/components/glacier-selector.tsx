@@ -46,7 +46,6 @@ function CenterWatcher({ onChange }: { onChange: (bbox: BBox) => void }) {
 
 export function GlacierSelector() {
     const [bbox, setBbox] = useState<BBox>([[27.95, 86.85], [28.05, 86.95]])
-    const years = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023]
 
     const handleSave = async () => {
         const [south, west] = bbox[0]
@@ -55,10 +54,13 @@ export function GlacierSelector() {
         try {
             const res = await fetch("http://localhost:5000/download-images", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json" // ✅ FIXED: explicitly required by Sentinel Hub
+                },
                 body: JSON.stringify({
                     south, west, north, east,
-                    years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023]
+                    years: [2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024]
                 })
             })
 
