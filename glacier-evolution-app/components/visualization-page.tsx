@@ -1,25 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { GlacierGraph } from "./glacier-graph"
 import { YearSlider } from "./year-slider"
 import { ImageViewer } from "./image-viewer"
-import { loadCSV, GlacierDataEntry } from '@/utils/loadCSV'
 
-const glacierMeta = {
-  "glacier-a": {
-    name: "Glacier H1",
-    location: "Himalayas",
-    csv: "/data/glacier_area_data_H1.csv"
-  },
-  "glacier-b": {
-    name: "Glacier H2",
-    location: "Himalayas",
-    csv: "/data/glacier_area_data_H2.csv"
-  }
+interface GlacierDataEntry {
+  year: number
+  area: number
 }
 
 export function VisualizationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,30 +18,41 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
   const [glacierData, setGlacierData] = useState<GlacierDataEntry[]>([])
   const [selectedYear, setSelectedYear] = useState<number>(2023)
   const [isLoading, setIsLoading] = useState(true)
+  const [meta, setMeta] = useState<{ name: string, location: string }>({ name: "", location: "" })
 
   useEffect(() => {
     params.then(async ({ id }) => {
       setGlacierId(id)
-      const glacier = glacierMeta[id as keyof typeof glacierMeta]
-      if (!glacier) return
-
       try {
-        const data = await loadCSV(glacier.csv)
-        setGlacierData(data)
-        if (data.length > 0) {
-          setSelectedYear(data[data.length - 1].year) // Set to most recent year
-        }
+        const res = await fetch(`http://localhost:5000/zones`)
+        const zones = await res.json()
+        const found = zones.find((z: any) => z.id === id)
+        if (!found || !found.areaByYear) return
+
+        const areaMap = found.areaByYear as Record<string, number>
+
+        const entries: GlacierDataEntry[] = Object.entries(areaMap)
+          .map(([year, area]) => ({
+            year: +year,
+            area // already in km²
+          }))
+          .sort((a, b) => a.year - b.year)
+
+        setGlacierData(entries)
+        setSelectedYear(entries[entries.length - 1].year)
+        setMeta({
+          name: found.name || found.id,
+          location: `Lat: ${found.bbox[1].toFixed(2)}–${found.bbox[3].toFixed(2)}, Lon: ${found.bbox[0].toFixed(2)}–${found.bbox[2].toFixed(2)}`
+        })
         setIsLoading(false)
       } catch (err) {
-        console.error("Failed to load CSV:", err)
+        console.error("Failed to load zone data:", err)
         setIsLoading(false)
       }
     })
   }, [params])
 
-  const glacier = glacierMeta[glacierId as keyof typeof glacierMeta]
-
-  if (!glacier || isLoading) {
+  if (!glacierData.length || isLoading) {
     return <div className="p-8 text-gray-600 text-lg">Loading...</div>
   }
 
@@ -61,7 +63,6 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link href="/">
             <Button variant="outline" size="sm" className="bg-white/80">
@@ -70,19 +71,17 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{glacier.name}</h1>
-            <p className="text-gray-600">{glacier.location}</p>
+            <h1 className="text-3xl font-bold text-gray-900">{meta.name}</h1>
+            <p className="text-gray-600">{meta.location}</p>
           </div>
         </div>
 
-        {/* Chart */}
         <div className="mb-8">
           <GlacierGraph data={glacierData} />
         </div>
 
-        {/* Images + Slider underneath */}
         <div className="mb-6">
-          <ImageViewer selectedYear={selectedYear} glacierName={glacier.name} />
+          <ImageViewer selectedYear={selectedYear} glacierName={meta.name} />
         </div>
 
         <div className="mt-[-1rem] mb-4 -translate-y-4">

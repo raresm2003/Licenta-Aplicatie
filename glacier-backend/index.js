@@ -17,6 +17,8 @@ const INSTANCE_ID = "d695dc9b-af46-494d-ac3b-28efc18067db"
 app.use(express.json())
 app.use(cors())
 
+app.use("/images/glaciers", express.static(path.join(__dirname, "glacier_analyses")));
+
 async function getAccessToken() {
     const res = await axios.post(
         "https://services.sentinel-hub.com/oauth/token",
@@ -226,33 +228,9 @@ app.get("/zones", (req, res) => {
 
         try {
             const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
-            const areaPath = path.join(zonesDir, folder, "area.csv")
-            let currentArea = "-"
-            let trend = 0
-
-            if (fs.existsSync(areaPath)) {
-                const lines = fs.readFileSync(areaPath, "utf-8").split("\n").filter(Boolean)
-                const entries = lines.slice(1).map(line => {
-                    const [year, area] = line.split(",")
-                    return { year: +year, area: +area }
-                })
-                if (entries.length > 0) {
-                    currentArea = `${entries[entries.length - 1].area.toFixed(1)} km²`
-                    const oldest = entries.find(e => e.year <= entries[entries.length - 1].year - 10)
-                    if (oldest) {
-                        const drop = ((oldest.area - entries[entries.length - 1].area) / oldest.area) * 100
-                        trend = +drop.toFixed(1)
-                    }
-                }
-            }
-
             return {
                 id: folder,
-                name: config.name,
-                location: "Unknown",
-                currentArea,
-                trend,
-                description: ""
+                ...config // includes name, bbox, years, areaByYear, trend, etc.
             }
         } catch (e) {
             console.warn(`Skipping zone ${folder} due to error:`, e.message)

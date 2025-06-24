@@ -1,28 +1,37 @@
-import { GlacierDataEntry } from './loadCSV'
+export interface GlacierDataEntry {
+    year: number
+    area: number
+}
 
 export const calculateLinearTrend = (
     data: GlacierDataEntry[]
-): (GlacierDataEntry & { trend: number })[] => {
-    const cleanData = data.filter(d =>
-        typeof d.year === 'number' &&
-        typeof d.area === 'number' &&
-        !isNaN(d.year) &&
-        !isNaN(d.area)
+): (GlacierDataEntry & { trend?: number })[] => {
+    const valid = data.filter(
+        d =>
+            typeof d.year === 'number' &&
+            typeof d.area === 'number' &&
+            !isNaN(d.year) &&
+            !isNaN(d.area)
     )
 
-    const n = cleanData.length
-    if (n === 0) return []
+    const n = valid.length
+    if (n < 2) {
+        return data.map(d => ({ ...d })) // no trend possible
+    }
 
-    const sumX = cleanData.reduce((sum, d) => sum + d.year, 0)
-    const sumY = cleanData.reduce((sum, d) => sum + d.area, 0)
-    const sumXY = cleanData.reduce((sum, d) => sum + d.year * d.area, 0)
-    const sumXX = cleanData.reduce((sum, d) => sum + d.year * d.year, 0)
+    const sumX = valid.reduce((sum, d) => sum + d.year, 0)
+    const sumY = valid.reduce((sum, d) => sum + d.area, 0)
+    const sumXY = valid.reduce((sum, d) => sum + d.year * d.area, 0)
+    const sumXX = valid.reduce((sum, d) => sum + d.year * d.year, 0)
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
     const intercept = (sumY - slope * sumX) / n
 
-    return cleanData.map(d => ({
+    return data.map(d => ({
         ...d,
-        trend: slope * d.year + intercept
+        trend:
+            typeof d.year === 'number' && !isNaN(d.year)
+                ? slope * d.year + intercept
+                : undefined
     }))
 }
