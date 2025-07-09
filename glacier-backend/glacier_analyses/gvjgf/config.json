@@ -1,0 +1,68 @@
+{
+  "name": "gvjgf",
+  "bbox": [
+    72.25434162815242,
+    39.09650936083805,
+    71.68322666196447,
+    39.538348465730394
+  ],
+  "years": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "createdAt": "2025-07-09T16:01:26.405Z",
+  "images": [
+    "landsat_glacier_2013_2013-09-12.png",
+    "landsat_glacier_2014_2014-08-30.png",
+    "landsat_glacier_2015_2015-08-17.png",
+    "landsat_glacier_2016_2016-09-20.png",
+    "landsat_glacier_2017_2017-08-22.png",
+    "landsat_glacier_2018_2018-09-10.png",
+    "landsat_glacier_2019_2019-09-13.png",
+    "landsat_glacier_2020_2020-09-15.png",
+    "landsat_glacier_2021_2021-09-18.png",
+    "landsat_glacier_2022_2022-09-29.png",
+    "landsat_glacier_2023_2023-09-24.png",
+    "landsat_glacier_2024_2024-08-25.png"
+  ],
+  "areaByYear": {
+    "2013": 316.93,
+    "2014": 339.91,
+    "2015": 460.17,
+    "2016": 333.97,
+    "2017": 339.76,
+    "2018": 493.7,
+    "2019": 302.53,
+    "2020": 321.08,
+    "2021": 290.74,
+    "2022": 295.92,
+    "2023": 477.3,
+    "2024": 263.17
+  },
+  "filenames": {
+    "2013": "landsat_glacier_2013_2013-09-12.png",
+    "2014": "landsat_glacier_2014_2014-08-30.png",
+    "2015": "landsat_glacier_2015_2015-08-17.png",
+    "2016": "landsat_glacier_2016_2016-09-20.png",
+    "2017": "landsat_glacier_2017_2017-08-22.png",
+    "2018": "landsat_glacier_2018_2018-09-10.png",
+    "2019": "landsat_glacier_2019_2019-09-13.png",
+    "2020": "landsat_glacier_2020_2020-09-15.png",
+    "2021": "landsat_glacier_2021_2021-09-18.png",
+    "2022": "landsat_glacier_2022_2022-09-29.png",
+    "2023": "landsat_glacier_2023_2023-09-24.png",
+    "2024": "landsat_glacier_2024_2024-08-25.png"
+  },
+  "trend": -10.02,
+  "lastUpdated": "2025-07-09T16:02:05.350509+00:00"
+}

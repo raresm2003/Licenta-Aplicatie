@@ -25,7 +25,7 @@ import { calculateLinearTrend } from "@/utils/calculateTrend"
 
 interface GlacierDataPoint {
   year: number
-  area: number
+  area: number | null
   trend?: number
 }
 
@@ -34,27 +34,43 @@ interface GlacierGraphProps {
 }
 
 export function GlacierGraph({ data }: GlacierGraphProps) {
-  // 🔁 Compute trend line
-  const mergedData = useMemo(() => calculateLinearTrend(data), [data])
-  console.log("mergedData", mergedData)
+  const completeData: GlacierDataPoint[] = useMemo(() => {
+    const years = data.map(d => d.year)
+    const minYear = Math.min(...years)
+    const maxYear = Math.max(...years)
 
-  // 🧊 Compute glacier shrink percentage over the last 10 years
+    const yearMap = new Map<number, number | null>(
+      data.map(d => [d.year, d.area ?? null])
+    )
+
+    return Array.from({ length: maxYear - minYear + 1 }, (_, i) => {
+      const year = minYear + i
+      const area = yearMap.has(year) ? yearMap.get(year)! : null
+      return { year, area }
+    })
+  }, [data])
+
+  const mergedData = useMemo(() => {
+    return calculateLinearTrend(completeData)
+  }, [completeData])
+
   useEffect(() => {
-    if (data.length < 2) return
+    const known = completeData.filter(d => d.area != null)
+    if (known.length < 2) return
 
-    const sorted = [...data].sort((a, b) => a.year - b.year)
+    const sorted = [...known].sort((a, b) => a.year - b.year)
     const lastYear = sorted[sorted.length - 1]
     const tenYearsAgo = sorted.findLast(d => d.year <= lastYear.year - 10)
 
     if (lastYear && tenYearsAgo) {
-      const percentDrop = ((tenYearsAgo.area - lastYear.area) / tenYearsAgo.area) * 100
+      const percentDrop = ((tenYearsAgo.area! - lastYear.area!) / tenYearsAgo.area!) * 100
       console.log(
         `🧊 Glacier shrunk by ${percentDrop.toFixed(2)}% from ${tenYearsAgo.year} (${tenYearsAgo.area} km²) to ${lastYear.year} (${lastYear.area} km²)`
       )
     } else {
       console.log("🔍 Not enough historical data for 10-year comparison.")
     }
-  }, [data])
+  }, [completeData])
 
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-md">
@@ -91,6 +107,7 @@ export function GlacierGraph({ data }: GlacierGraphProps) {
                 dataKey="area"
                 stroke="var(--color-area)"
                 strokeWidth={3}
+                connectNulls={true}
                 dot={{ fill: "var(--color-area)", strokeWidth: 2, r: 4 }}
                 activeDot={{ r: 6, stroke: "var(--color-area)", strokeWidth: 2 }}
                 name="Actual Area"
@@ -101,6 +118,7 @@ export function GlacierGraph({ data }: GlacierGraphProps) {
                 stroke="#38bdf8"
                 strokeDasharray="4 4"
                 strokeWidth={2}
+                connectNulls
                 dot={{ fill: "#38bdf8", r: 2 }}
                 activeDot={{ r: 3, stroke: "#38bdf8", strokeWidth: 1 }}
                 name="Trend Line"

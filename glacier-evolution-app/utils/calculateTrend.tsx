@@ -4,19 +4,20 @@ export interface GlacierDataEntry {
 }
 
 export const calculateLinearTrend = (
-    data: GlacierDataEntry[]
-): (GlacierDataEntry & { trend?: number })[] => {
-    const valid = data.filter(
+    rawData: { year: number; area: number | null }[]
+): ({ year: number; area: number | null; trend?: number })[] => {
+    const valid = rawData.filter(
         d =>
-            typeof d.year === 'number' &&
-            typeof d.area === 'number' &&
+            typeof d.year === "number" &&
+            typeof d.area === "number" &&
+            d.area !== null &&
             !isNaN(d.year) &&
             !isNaN(d.area)
-    )
+    ) as GlacierDataEntry[] // assertion: all have number area
 
     const n = valid.length
     if (n < 2) {
-        return data.map(d => ({ ...d })) // no trend possible
+        return rawData.map(d => ({ ...d })) // no regression
     }
 
     const sumX = valid.reduce((sum, d) => sum + d.year, 0)
@@ -27,11 +28,10 @@ export const calculateLinearTrend = (
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX)
     const intercept = (sumY - slope * sumX) / n
 
-    return data.map(d => ({
+    return rawData.map(d => ({
         ...d,
-        trend:
-            typeof d.year === 'number' && !isNaN(d.year)
-                ? slope * d.year + intercept
-                : undefined
+        trend: typeof d.year === "number" && !isNaN(d.year)
+            ? slope * d.year + intercept
+            : undefined
     }))
 }

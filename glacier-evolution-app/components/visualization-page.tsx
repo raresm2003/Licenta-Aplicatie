@@ -1,11 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, TrendingDown, TrendingUp, Minus } from "lucide-react"
 import Link from "next/link"
 import { GlacierGraph } from "./glacier-graph"
-import { YearSlider } from "./year-slider"
 import { ImageViewer } from "./image-viewer"
 
 interface GlacierDataEntry {
@@ -18,7 +16,7 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
   const [glacierData, setGlacierData] = useState<GlacierDataEntry[]>([])
   const [selectedYear, setSelectedYear] = useState<number>(2023)
   const [isLoading, setIsLoading] = useState(true)
-  const [meta, setMeta] = useState<{ name: string, location: string }>({ name: "", location: "" })
+  const [meta, setMeta] = useState<{ name: string, trend: number | null }>({ name: "", trend: null })
 
   useEffect(() => {
     params.then(async ({ id }) => {
@@ -34,7 +32,7 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
         const entries: GlacierDataEntry[] = Object.entries(areaMap)
           .map(([year, area]) => ({
             year: +year,
-            area // already in km²
+            area
           }))
           .sort((a, b) => a.year - b.year)
 
@@ -42,7 +40,7 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
         setSelectedYear(entries[entries.length - 1].year)
         setMeta({
           name: found.name || found.id,
-          location: `Lat: ${found.bbox[1].toFixed(2)}–${found.bbox[3].toFixed(2)}, Lon: ${found.bbox[0].toFixed(2)}–${found.bbox[2].toFixed(2)}`
+          trend: typeof found.trend === "number" ? found.trend : null
         })
         setIsLoading(false)
       } catch (err) {
@@ -51,6 +49,18 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
       }
     })
   }, [params])
+
+  const getTrendIcon = (trend: number) => {
+    if (trend > 0) return <TrendingUp className="h-4 w-4 text-green-600" />
+    if (trend < 0) return <TrendingDown className="h-4 w-4 text-red-600" />
+    return <Minus className="h-4 w-4 text-gray-500" />
+  }
+
+  const getTrendTextColor = (trend: number) => {
+    if (trend > 0) return "text-green-600"
+    if (trend < 0) return "text-red-600"
+    return "text-gray-500"
+  }
 
   if (!glacierData.length || isLoading) {
     return <div className="p-8 text-gray-600 text-lg">Loading...</div>
@@ -61,18 +71,20 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
   const maxYear = Math.max(...years)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
+    <div className="min-h-screen bg-transparent">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/">
-            <Button variant="outline" size="sm" className="bg-white/80">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Overview
-            </Button>
+          <Link href="/visualization" className="hover:text-blue-600 transition">
+            <ArrowLeft className="w-8 h-8" />
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">{meta.name}</h1>
-            <p className="text-gray-600">{meta.location}</p>
+            {meta.trend !== null && (
+              <div className={`flex items-center gap-2 text-base ${getTrendTextColor(meta.trend)}`}>
+                {getTrendIcon(meta.trend)}
+                <span>{meta.trend.toFixed(2)}%</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -80,18 +92,13 @@ export function VisualizationPage({ params }: { params: Promise<{ id: string }> 
           <GlacierGraph data={glacierData} />
         </div>
 
-        <div className="mb-6">
-          <ImageViewer selectedYear={selectedYear} glacierName={meta.name} />
-        </div>
-
-        <div className="mt-[-1rem] mb-4 -translate-y-4">
-          <YearSlider
-            selectedYear={selectedYear}
-            onYearChange={setSelectedYear}
-            minYear={minYear}
-            maxYear={maxYear}
-          />
-        </div>
+        <ImageViewer
+          selectedYear={selectedYear}
+          glacierName={meta.name}
+          onYearChange={setSelectedYear}
+          minYear={minYear}
+          maxYear={maxYear}
+        />
       </div>
     </div>
   )

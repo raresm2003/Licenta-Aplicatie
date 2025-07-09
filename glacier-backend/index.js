@@ -43,7 +43,7 @@ async function getBestLandsatImageDate(token, bbox, year) {
             collections: ["landsat-ot-l2"],
             limit: 50,
             query: {
-                "eo:cloud_cover": { lte: 20 }
+                "eo:cloud_cover": { lte: 15 }
             }
         },
         {
@@ -90,10 +90,11 @@ function evaluatePixel(sample) {
 }`
 }
 
-app.post("/analyze-zone", async (req, res) => {
+app.post("/start-download", async (req, res) => {
     const { south, west, north, east, years, zoneName } = req.body
 
     if (!south || !west || !north || !east || !zoneName || !Array.isArray(years)) {
+        console.warn("⚠️ Missing parameters in request:", req.body)
         return res.status(400).json({ error: "Missing required parameters" })
     }
 
@@ -101,17 +102,14 @@ app.post("/analyze-zone", async (req, res) => {
     const originalFolder = path.join(baseFolder, "original")
     mkdirp.sync(originalFolder)
 
-    const config = {
-        name: zoneName,
-        bbox: [west, south, east, north],
-        years,
-        createdAt: new Date().toISOString()
-    }
-    fs.writeFileSync(path.join(baseFolder, "config.json"), JSON.stringify(config, null, 2))
+    console.log(`📁 Created folder for zone "${zoneName}"`)
 
     try {
         const token = await getAccessToken()
         const bbox = [west, south, east, north]
+
+        let successfulImages = 0
+        const downloadedImages = []
 
         for (const year of years) {
             if (year < 2013) {
@@ -119,12 +117,14 @@ app.post("/analyze-zone", async (req, res) => {
                 continue
             }
 
-            console.log(`📅 Searching best Landsat 8 image for ${year}...`)
+            console.log(`🔍 Searching best image for year ${year}...`)
             const bestDate = await getBestLandsatImageDate(token, bbox, year)
             if (!bestDate) {
-                console.log(`❌ No image found for ${year}`)
+                console.warn(`⚠️ No image found for year ${year}`)
                 continue
             }
+
+            console.log(`📆 Best date for ${year}: ${bestDate}`)
 
             const response = await axios.post(
                 `https://services-uswest2.sentinel-hub.com/api/v1/process?instanceId=${INSTANCE_ID}`,
@@ -132,18 +132,13 @@ app.post("/analyze-zone", async (req, res) => {
                     input: {
                         bounds: {
                             bbox,
-                            properties: {
-                                crs: "http://www.opengis.net/def/crs/EPSG/0/4326"
-                            }
+                            properties: { crs: "http://www.opengis.net/def/crs/EPSG/0/4326" }
                         },
                         data: [
                             {
                                 type: "landsat-ot-l2",
                                 dataFilter: {
-                                    timeRange: {
-                                        from: bestDate,
-                                        to: bestDate
-                                    },
+                                    timeRange: { from: bestDate, to: bestDate },
                                     maxCloudCoverage: 20
                                 }
                             }
@@ -153,10 +148,7 @@ app.post("/analyze-zone", async (req, res) => {
                         width: 1024,
                         height: 1024,
                         responses: [
-                            {
-                                identifier: "default",
-                                format: { type: "image/png" }
-                            }
+                            { identifier: "default", format: { type: "image/png" } }
                         ]
                     },
                     evalscript: buildEvalscript()
@@ -165,50 +157,85 @@ app.post("/analyze-zone", async (req, res) => {
                     headers: {
                         Authorization: `Bearer ${token}`,
                         "Content-Type": "application/json",
-                        "Accept": "image/png"
+                        Accept: "image/png"
                     },
                     responseType: "arraybuffer"
                 }
             )
 
-            const contentType = response.headers["content-type"]
-            if (!contentType.includes("image/png")) {
-                const errorText = Buffer.from(response.data).toString("utf-8")
-                console.error(`🚨 ${year} error:\n`, errorText)
+            if (!response.headers["content-type"].includes("image/png")) {
+                const errText = Buffer.from(response.data).toString("utf-8")
+                console.error(`❌ Unexpected response for ${year}:`, errText)
                 continue
             }
 
             const fileName = `landsat_glacier_${year}_${bestDate.slice(0, 10)}.png`
-            fs.writeFileSync(path.join(originalFolder, fileName), response.data)
-            console.log(`✅ Saved ${fileName}`)
+            const imagePath = path.join(originalFolder, fileName)
+            fs.writeFileSync(imagePath, response.data)
+            console.log(`✅ Saved image: ${fileName}`)
+
+            successfulImages++
+            downloadedImages.push(fileName)
         }
 
-        // 🔁 Run ML model on downloaded images
-        console.log("🧠 Running model to generate masks and overlays...")
+        if (successfulImages < 8) {
+            console.warn(`⚠️ Only ${successfulImages} valid images. Deleting folder.`)
+            fs.rmSync(baseFolder, { recursive: true, force: true })
+            return res.status(400).json({ error: "Not enough images found!" })
+        }
 
-        const child = exec(`"C:/Users/micle/AppData/Local/Programs/Python/Python312/python.exe" ml/infer.py "${baseFolder}"`)
+        const config = {
+            name: zoneName,
+            bbox: [west, south, east, north],
+            years,
+            createdAt: new Date().toISOString(),
+            images: downloadedImages
+        }
+        fs.writeFileSync(path.join(baseFolder, "config.json"), JSON.stringify(config, null, 2))
+        console.log(`📄 Saved config.json with ${successfulImages} images`)
 
-        // Pipe Python stdout and stderr directly to Node's console
-        child.stdout.on("data", data => process.stdout.write(data))
-        child.stderr.on("data", data => process.stderr.write(data))
-
-        child.on("exit", code => {
-            if (code === 0) {
-                console.log("✅ Python script completed successfully.")
-                res.status(200).json({ message: `✅ Analysis complete for "${zoneName}".` })
-            } else {
-                console.error(`❌ Python script exited with code ${code}`)
-                res.status(500).json({ error: `Python script failed with code ${code}` })
-            }
-        })
+        res.status(200).json({ message: "Download complete", zonePath: baseFolder })
     } catch (err) {
-        const readable = typeof err.response?.data === "object"
-            ? JSON.stringify(err.response.data)
-            : err.response?.data?.toString("utf-8") || err.message
-        console.error("❌ Error:", readable)
-        res.status(500).json({ error: "Analysis failed", details: readable })
+        const readable = err.response?.data?.toString("utf-8") || err.message
+        console.error("❌ Download failed:", readable)
+
+        if (fs.existsSync(baseFolder)) {
+            fs.rmSync(baseFolder, { recursive: true, force: true })
+            console.log("🧹 Cleaned up incomplete folder")
+        }
+
+        res.status(500).json({ error: "Download failed", details: readable })
     }
 })
+
+
+
+app.post("/run-analysis", (req, res) => {
+    const { zonePath } = req.body
+    if (!zonePath) {
+        console.warn("⚠️ Missing zonePath in /run-analysis request")
+        return res.status(400).json({ error: "Missing zone path" })
+    }
+
+    console.log(`🚀 Starting analysis for zone: ${zonePath}`)
+
+    const child = exec(`"C:/Users/micle/AppData/Local/Programs/Python/Python312/python.exe" ml/infer.py "${zonePath}"`)
+
+    child.stdout.on("data", data => process.stdout.write(data))
+    child.stderr.on("data", data => process.stderr.write(data))
+
+    child.on("exit", code => {
+        if (code === 0) {
+            console.log("✅ Python analysis completed successfully.")
+            res.status(200).json({ message: "✅ Analysis complete." })
+        } else {
+            console.error(`❌ Python script failed with exit code ${code}`)
+            res.status(500).json({ error: `Python script failed with code ${code}` })
+        }
+    })
+})
+
+
 
 app.get("/zones", (req, res) => {
     const zonesDir = path.join(__dirname, "glacier_analyses")
@@ -239,6 +266,25 @@ app.get("/zones", (req, res) => {
     }).filter(Boolean)
 
     res.json(zones)
+})
+
+app.delete("/delete-zone/:id", (req, res) => {
+    const zoneId = req.params.id
+    const zonePath = path.join(__dirname, "glacier_analyses", zoneId)
+
+    if (!fs.existsSync(zonePath)) {
+        return res.status(404).json({ error: "Zone not found" })
+    }
+
+    fs.rm(zonePath, { recursive: true, force: true }, (err) => {
+        if (err) {
+            console.error(`❌ Failed to delete zone ${zoneId}:`, err.message)
+            return res.status(500).json({ error: "Failed to delete zone" })
+        }
+
+        console.log(`🗑️ Deleted zone: ${zoneId}`)
+        res.status(200).json({ message: "Zone deleted" })
+    })
 })
 
 app.listen(PORT, () => {
