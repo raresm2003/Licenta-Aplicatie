@@ -11,19 +11,19 @@ def load_session(model_path):
 
 def process_image(image_path):
     image = Image.open(image_path).convert("RGB").resize((512, 512))
-    array = np.array(image) / 255.0  # Normalize
+    array = np.array(image) / 255.0
     return array.astype(np.float32)
 
 def save_mask(mask, save_path):
-    binary = (mask < 0.5).astype(np.uint8) * 255  # Glacier = white
+    binary = (mask < 0.5).astype(np.uint8) * 255
     Image.fromarray(binary).save(save_path)
 
 def create_overlay(original_path, mask, overlay_path):
     orig = Image.open(original_path).convert("RGBA").resize((512, 512))
     mask_img = Image.fromarray((mask < 0.5).astype(np.uint8) * 255).convert("L")
-    blue_mask = Image.new("RGBA", mask_img.size, (0, 0, 255, 100))  # Blue overlay
+    blue_mask = Image.new("RGBA", mask_img.size, (0, 0, 255, 100))
     overlay = orig.copy()
-    overlay.paste(blue_mask, (0, 0), mask_img)  # Apply only where mask is present
+    overlay.paste(blue_mask, (0, 0), mask_img)
     overlay.save(overlay_path)
 
 def calculate_area(mask, bbox):

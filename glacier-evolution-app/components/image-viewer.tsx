@@ -57,7 +57,6 @@ export function ImageViewer({ selectedYear, glacierName, onYearChange, minYear, 
       </CardHeader>
       <CardContent>
         <div className="flex flex-col lg:flex-row gap-6 items-center justify-center">
-          {/* Original Satellite Image */}
           <div className="max-w-md w-full space-y-3">
             <h3 className="font-semibold text-gray-800 text-center">Original Satellite Image</h3>
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden mx-auto">
@@ -76,7 +75,6 @@ export function ImageViewer({ selectedYear, glacierName, onYearChange, minYear, 
             </p>
           </div>
 
-          {/* Overlay Image */}
           <div className="max-w-md w-full space-y-3">
             <h3 className="font-semibold text-gray-800 text-center">Boundary Overlay</h3>
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden mx-auto">
@@ -95,7 +93,6 @@ export function ImageViewer({ selectedYear, glacierName, onYearChange, minYear, 
             </p>
           </div>
 
-          {/* Mask Image */}
           <div className="max-w-md w-full space-y-3">
             <h3 className="font-semibold text-gray-800 text-center">Segmentation Mask</h3>
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden mx-auto">
@@ -115,7 +112,6 @@ export function ImageViewer({ selectedYear, glacierName, onYearChange, minYear, 
           </div>
         </div>
 
-        {/* Slider for valid years */}
         {availableYears.length > 0 && (
           <div className="mt-6 px-4">
             <Slider

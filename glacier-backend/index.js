@@ -257,7 +257,7 @@ app.get("/zones", (req, res) => {
             const config = JSON.parse(fs.readFileSync(configPath, "utf-8"))
             return {
                 id: folder,
-                ...config // includes name, bbox, years, areaByYear, trend, etc.
+                ...config
             }
         } catch (e) {
             console.warn(`Skipping zone ${folder} due to error:`, e.message)

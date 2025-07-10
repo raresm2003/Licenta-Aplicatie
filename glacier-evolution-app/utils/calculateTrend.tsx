@@ -13,11 +13,11 @@ export const calculateLinearTrend = (
             d.area !== null &&
             !isNaN(d.year) &&
             !isNaN(d.area)
-    ) as GlacierDataEntry[] // assertion: all have number area
+    ) as GlacierDataEntry[]
 
     const n = valid.length
     if (n < 2) {
-        return rawData.map(d => ({ ...d })) // no regression
+        return rawData.map(d => ({ ...d }))
     }
 
     const sumX = valid.reduce((sum, d) => sum + d.year, 0)
