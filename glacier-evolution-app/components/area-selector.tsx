@@ -8,7 +8,7 @@ import { Mountain, TrendingDown, TrendingUp, Minus, Trash2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
+  Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
@@ -20,7 +20,7 @@ interface GlacierZone {
   areaByYear?: Record<string, number>
 }
 
-type SortMode = "neutral" | "best" | "worst"
+type SortMode = "neutral" | "best" | "worst" | "oldest"
 
 export function AreaSelector() {
   const [glacierAreas, setGlacierAreas] = useState<GlacierZone[]>([])
@@ -81,13 +81,21 @@ export function AreaSelector() {
         return [...filtered].sort((a, b) => (b.trend ?? -Infinity) - (a.trend ?? -Infinity))
       case "worst":
         return [...filtered].sort((a, b) => (a.trend ?? Infinity) - (b.trend ?? Infinity))
-      case "neutral":
-      default:
+      case "oldest":
         return [...filtered].sort((a, b) => {
           const aYears = a.areaByYear ? Object.keys(a.areaByYear).map(Number) : []
           const bYears = b.areaByYear ? Object.keys(b.areaByYear).map(Number) : []
-          return Math.max(...bYears) - Math.max(...aYears)
+          return Math.min(...aYears) - Math.min(...bYears)
         })
+      case "neutral":
+      default:
+        return [...filtered]
+          .sort((a, b) => {
+            const aYears = a.areaByYear ? Object.keys(a.areaByYear).map(Number) : []
+            const bYears = b.areaByYear ? Object.keys(b.areaByYear).map(Number) : []
+            return Math.min(...aYears) - Math.min(...bYears)
+          })
+          .reverse()
     }
   }, [glacierAreas, search, sort])
 
@@ -107,6 +115,7 @@ export function AreaSelector() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="neutral">Most Recent</SelectItem>
+            <SelectItem value="oldest">Oldest</SelectItem>
             <SelectItem value="best">Best → Worst (%)</SelectItem>
             <SelectItem value="worst">Worst → Best (%)</SelectItem>
           </SelectContent>
